@@ -2,10 +2,12 @@ package ma.emsi.centre.springaspectjaop.metier.impl;
 
 import ma.emsi.centre.springaspectjaop.domain.Compte;
 import ma.emsi.centre.springaspectjaop.metier.IMetierBanque;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Service
 public class MetierBanqueImpl implements IMetierBanque {
     private Map<Long, Compte> compteMap= new HashMap<>();
     @Override
