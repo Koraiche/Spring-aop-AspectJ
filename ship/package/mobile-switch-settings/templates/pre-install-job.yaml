@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Chart.Name }}-initdb-job
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      name: {{ .Chart.Name }}-initdb-job
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-initdb-job
+          image: "{{ .Values.global.registry1 }}/{{ .Values.datasource.image.repository }}:{{ .Values.datasource.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+           {{- if (eq "ORACLE" .Values.datasource.platform) }}
+          - name: ORACLE_SID
+            value: "{{ .Values.datasource.rdbms.sid }}"  
+          - name: ORACLE_HOST
+            value: "{{ .Values.datasource.rdbms.host }}"
+          - name: ORACLE_PORT
+            value: "{{ .Values.datasource.rdbms.port }}" 
+          - name: ORACLE_USER
+            value: "{{ .Values.datasource.db.username }}"
+          - name: ORACLE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "mobile-switch-settings.fullname" . }}-sql
+                key: oraclePassword 
+           {{- else if (eq "POSTGRES" .Values.datasource.platform) }}
+          - name: POSTGRES_HOST
+            value: "{{ .Values.datasource.rdbms.host }}"
+          - name: POSTGRES_PORT
+            value: "{{ .Values.datasource.rdbms.port }}" 
+          - name: POSTGRES_USER
+            value: "{{ .Values.datasource.db.username }}"
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "mobile-switch-settings.fullname" . }}-sql
+                key: postgresPassword       
+          {{- else }}
+          - name: MYSQL_HOST
+            value: "{{ .Values.datasource.rdbms.host }}"
+          - name: MYSQL_USER
+            value: "{{ .Values.datasource.db.username }}"
+          - name: MYSQL_PORT
+            value: "{{ .Values.datasource.rdbms.port }}"
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "mobile-switch-settings.fullname" . }}-sql
+                key: mysqlPassword
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          command: ["/bin/sh", "-c"]
+          {{- if .Values.readinessProbeSql.enabled }}
+          readinessProbe: {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.livenessProbeSql.enabled }}
+          livenessProbe: {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          workingDir: /opt/conf
+          {{- if (eq "POSTGRES" .Values.datasource.platform) }}
+          args:
+          - PGPASSWORD=$POSTGRES_PASSWORD psql -p $POSTGRES_PORT -U $POSTGRES_USER -h $POSTGRES_HOST -a -f schema-POSTGRESQL.sql && if [ -e data-POSTGRESQL.sql ]; then PGPASSWORD=$POSTGRES_PASSWORD psql -p $POSTGRES_PORT -U $POSTGRES_USER -h $POSTGRES_HOST -a -f data-POSTGRESQL.sql; fi
+          {{- else if (eq "ORACLE" .Values.datasource.platform) }}
+          args:
+          - ls -alh && sql $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_HOST:$ORACLE_PORT/$ORACLE_SID @oracle.sql
+          {{- else }}
+          args:
+          - mysql -h $MYSQL_HOST:$MYSQL_PORT -u"$MYSQL_USER" -p"$MYSQL_ROOT_PASSWORD" < schema-MYSQL.sql && if [ -e data-MYSQL.sql ]; then mysql -h $MYSQL_HOST:$MYSQL_PORT -u"$MYSQL_USER" -p"$MYSQL_ROOT_PASSWORD" < data-MYSQL.sql; fi
+          {{- end }}
+          volumeMounts:
+          - name: conf
+            mountPath: /opt/conf
+      volumes:
+      - name: conf
+        configMap:
+          name: {{ .Chart.Name }}-initdb-config
+      restartPolicy: "OnFailure"

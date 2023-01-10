@@ -1,0 +1,4 @@
+@Library('nxp_pipeline_lib') _
+backend_pre_code_review {
+    scmUrl = 'https://vcs.dev.s2m.ma/national-payment-switches/mobile-switch/mobile-switch-settings.git'
+}

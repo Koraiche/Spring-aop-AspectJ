@@ -1,0 +1,144 @@
+void deploy_micro_service(String ms_version) {
+	buildservicequalif.run_qualif_deployment_back_end(ms_version, "container-registry.dev.s2m.ma/national-payment-switches-mobile-switch")
+	deploy_k8s_micro_service(ms_version)
+}
+
+void deploy_k8s_micro_service(String ms_version) {
+
+	withEnv([
+		"DOCKER_BUILD_PATH='.'",
+		"USE_DOCKER_IMAGE_TAG_SHA256=no",
+
+		"REGISTRY_ADDRESS=container-registry.dev.s2m.ma/national-payment-switches-mobile-switch",
+
+		"K8S_TOKEN_ID=K8S_TOKEN_ID",
+		"K8S_URI=https://442EFD99300DFC0F8C3FD709B10CD40F.gr7.us-east-2.eks.amazonaws.com",
+		"K8S_CONTEXT_NAME=kubernetes-context",
+		"K8S_CLUSTER_NAME=kubernetes",
+		"K8S_NAMESPACE=mobile-switch-qualif",
+		"K8S_MANIFESTS_PATH=./ship/k8s",
+		"K8S_DEPLOYMENT_TIER=ms-settings",
+		"K8S_DEPLOYMENT_FRAMEWORK=spring-boot",
+		"K8S_DEPLOYMENT_REPLICAS=1",
+		"K8S_DEPLOYMENT_REVISION_HISTORY_LIMIT=3",
+		"K8S_DEPLOYMENT_PORT=9090",
+		"K8S_DEPLOYMENT_CONTEXT_PATH=/",
+		"K8S_DOCKER_IMAGE_SECRET_NAME=ms-settings-image-puller",
+		"K8S_DEPLOYMENT_MEM_REQ=512Mi",
+		"K8S_DEPLOYMENT_MEM_LIMIT=512Mi",
+		"K8S_DEPLOYMENT_CPU_REQ=100m",
+		"K8S_DEPLOYMENT_CPU_LIMIT=850m",
+		"K8S_DEPLOYMENT_JAVA_XMX=128M",
+		"K8S_DEPLOYMENT_JAVA_XMS=128M",
+		"K8S_APP_URI=ms-settings-mobile-switch-qualification.app.dev.s2m.ma",
+		"MOBILE_SWITCH_SETTINGS_MYSQL_HOST=mysql",
+		"MOBILE_SWITCH_SETTINGS_MYSQL_DB=settings_db",
+		"CORS_ENABLED=true",
+		"CORS_ALLOWED_ADDRESSES=https://ms-ui-mobile-switch-qualification.app.dev.s2m.ma",
+		"KEYCLOAK_AUTH_SERVER_URL=http://keycloak.transvers-integration:8080/auth",
+		"MS_MOBILE_SWITCH_NOTIFICATION_NAME=notifications-service",
+		"MS_MOBILE_SWITCH_NOTIFICATION_API_URL=notifications-service.transvers-qualification:9090/api",
+	    "MS_MOBILE_SWITCH_VAULT_NAME=vault-service",
+        //"MS_MOBILE_SWITCH_VAULT_API_URL=http://socle-vault-service.itsp-qualif:9090/api",
+        "MS_MOBILE_SWITCH_VAULT_API_URL=vault-service.transvers-integration:8200/api",
+        "MS_MOBILE_SWITCH_WALLETS_NAME=mobile-switch-wallet",
+        "MS_MOBILE_SWITCH_WALLETS_API_URL=mobile-switch-wallet.mobile-switch-qualif:9090/swmn/wallets/1/0",
+        "KAFKA_INQUIRIES_TOPIC=mobile-switch-settings-inquiries-qualification-0001",
+        "NPS_LOGS_TOPIC=mobile-switch-logs-qualification-0001",
+        //"KAFKA_CONSUMER_NOTIFICATION=nxp-qualification-notification-system-kafka-consumer-no-000001"
+        "KAFKA_CONSUMER_NOTIFICATION=nxp-integration-notification-system-kafka-consumer-no-000001",
+        "AUDIT_TRAIL_TRACE_TOPIC=nxp-audit-trail-integration-tracing-activity-topic-no-000003",
+  		"AUDIT_TRAIL_SENSITIVE_DATA_TOPIC=nxp-audit-trail-integration-sensitive-data-topic-no-000003",
+  		"AUDIT_TRAIL_FORBIDDEN_ACCESS_TOPIC=nxp-audit-trail-integration-forbidden-access-topic-no-000003"
+	]) {
+	stage('Deploy mc-service to k8s qa. env.') {
+		script {
+			env.BUILD_RELEASE_VERSION = readMavenPom().getVersion().replace("-SNAPSHOT", "")
+			env.POM_ARTIFACT_ID = readMavenPom() getArtifactId()
+
+			if (ms_version == "develop")
+				env.BUILD_RELEASE_VERSION = "develop"
+		}
+
+		env.DOCKER_IMAGE_NAME = env.POM_ARTIFACT_ID
+		env.DOCKER_IMAGE_TAG_VERSION = env.BUILD_RELEASE_VERSION
+		env.DOCKER_IMAGE_NAME_TAG_VERSION = "${env.DOCKER_IMAGE_NAME}:$env.DOCKER_IMAGE_TAG_VERSION"
+		env.DOCKER_IMAGE_NAME_TAG_LATEST = "${env.DOCKER_IMAGE_NAME}:latest"
+		env.DOCKER_IMAGE_URI_VERSION = "${env.REGISTRY_ADDRESS}/${env.DOCKER_IMAGE_NAME_TAG_VERSION}"
+		env.DOCKER_IMAGE_URI_LATEST = "${env.REGISTRY_ADDRESS}/${env.DOCKER_IMAGE_NAME_TAG_LATEST}"
+		env.DOCKER_IMAGE_URI = env.DOCKER_IMAGE_URI_VERSION
+
+		env.K8S_DEPLOYMENT_JAVA_OPTS = "-XX:+UnlockExperimentalVMOptions -XX:MaxRAMFraction=1 -Xms${env.K8S_DEPLOYMENT_JAVA_XMS} -Xmx${env.K8S_DEPLOYMENT_JAVA_XMX}"
+		env.K8S_DEPLOYMENT_SPRINTBOOT_PORT = "--server.port=${env.K8S_DEPLOYMENT_PORT} --server.servlet.context-path=${env.K8S_DEPLOYMENT_CONTEXT_PATH}"
+
+
+		env.REGISTRY_URI = "https://${env.REGISTRY_ADDRESS}"
+		
+		env.K8S_DEPLOYMENT_NAME = env.POM_ARTIFACT_ID
+
+		withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'NEXUS_CREDS', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME']]) {
+			env.NEXUS_USR = env.USERNAME
+			env.NEXUS_PWD = env.PASSWORD
+ 		}
+
+		withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'mobile-switch-mysql-database-ids', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME']]) {
+			env.MOBILE_SWITCH_SETTINGS_MYSQL_USER = env.USERNAME
+			env.MOBILE_SWITCH_SETTINGS_MYSQL_PASSWORD = env.PASSWORD
+ 		}
+
+		withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'container-registry-user', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME']]) {
+			env.REGISTRY_CREDENTIALS_USER = env.USERNAME
+			env.REGISTRY_CREDENTIALS_PASSWORD = env.PASSWORD
+ 		}
+
+        
+		sh 'echo Deploy to K8S: Qualification Environement'
+		withKubeConfig([credentialsId: "$K8S_TOKEN_ID",
+			serverUrl: "$K8S_URI",
+			contextName: "$K8S_CONTEXT_NAME",
+			clusterName: "$K8S_CLUSTER_NAME",
+			namespace: "$K8S_NAMESPACE"
+		]) {
+		script {
+			try {
+				sh 'kubectl create secret docker-registry $K8S_DOCKER_IMAGE_SECRET_NAME --docker-server=$REGISTRY_ADDRESS --docker-username=$REGISTRY_CREDENTIALS_USER --docker-password=$REGISTRY_CREDENTIALS_PASSWORD||true 2>/dev/null'
+		
+				// Make sure Database Exist
+				sh 'kubectl exec deployment.apps/$MOBILE_SWITCH_SETTINGS_MYSQL_HOST -- mysql --user $MOBILE_SWITCH_SETTINGS_MYSQL_USER --password=$MOBILE_SWITCH_SETTINGS_MYSQL_PASSWORD -se "CREATE DATABASE IF NOT EXISTS $MOBILE_SWITCH_SETTINGS_MYSQL_DB;"'
+
+				// K8S manifests creation update
+				if ("$USE_DOCKER_IMAGE_TAG_SHA256" == "yes") {
+					sh 'echo true: $DOCKER_IMAGE_URI'
+					// The below command can be executed when using sha256
+					sh 'envsubst < $K8S_MANIFESTS_PATH/deployment.yaml|kubectl apply -f -'
+				} else {
+					env.IS_DEPLOYMENT_CHANGED = 'test'
+					sh'envsubst < $K8S_MANIFESTS_PATH/deployment.yaml|kubectl apply -f -'
+				
+					// The below command can be executed when not using sha256, this require imagePullPolicy: Always
+					//env.IS_DEPLOYMENT_CHANGED = sh(returnStdout: true, script: '''envsubst < $K8S_MANIFESTS_PATH/deployment.yaml|kubectl apply -f -|awk {'print $2 '}''').trim()
+					env.CURRENT_IMAGE_IN_K8S = sh(returnStdout: true, script: '''kubectl get deploy/$K8S_DEPLOYMENT_NAME -o jsonpath="{..image}"|head -n 1''').trim()
+
+					// Force POD redeployment if not yet redeployed
+					if ("$IS_DEPLOYMENT_CHANGED" == "unchanged" && "$CURRENT_IMAGE_IN_K8S" == "$DOCKER_IMAGE_URI_VERSION") {
+						sh 'echo Restart $K8S_DEPLOYMENT_NAME'
+						sh 'kubectl rollout restart deployment $K8S_DEPLOYMENT_NAME'
+					} /**/
+				}
+		
+				sh 'envsubst < $K8S_MANIFESTS_PATH/service.yaml|kubectl apply -f -'
+				sh 'envsubst < $K8S_MANIFESTS_PATH/ingress.yaml|kubectl apply -f -'
+			} catch (err) {
+				throw err
+			}
+		}
+		} /**/
+        }
+	}
+
+}
+
+
+return [
+    deploy_micro_service: this.&deploy_micro_service
+]

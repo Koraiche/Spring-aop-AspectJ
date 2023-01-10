@@ -1,0 +1,10 @@
+/target/
+/.project
+/.factorypath
+/.classpath
+/.settings/
+.idea/
+.idea
+bin
+switch-mobile-settings.iml
+/.idea/workspace.xml
