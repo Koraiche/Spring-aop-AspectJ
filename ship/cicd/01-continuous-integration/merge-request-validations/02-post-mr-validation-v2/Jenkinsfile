@@ -1,7 +1,0 @@
-@Library('nxp_pipeline_lib') _
-backend_post_merge_request_v2 {
-    nxpproduct = 'mobile-switch'
-    namespace = 'mobile-switch-integration-v2'
-    environment = 'integration'
-    globalRepo = 'https://vcs.dev.s2m.ma/infrastructure/product/national-payment-switches/mobile-switch.git'
-}

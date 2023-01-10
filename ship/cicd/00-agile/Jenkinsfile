@@ -1,4 +1,0 @@
-@Library('nxp_pipeline_lib') _
-feature {
-    scmUrl = 'https://vcs.dev.s2m.ma/national-payment-switches/mobile-switch/mobile-switch-settings.git'
-}
