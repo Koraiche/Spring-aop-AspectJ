@@ -2,6 +2,7 @@ package ma.emsi.centre.springaspectjaop.aspects;
 
 
 import ma.emsi.centre.springaspectjaop.domain.Compte;
+import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Aspect
 @Component
 public class LoggingAspect {
-    long t1, t2;
+
     Logger log = LoggerFactory.getLogger(LoggingAspect.class);
     @Pointcut("execution(* ma.emsi.centre.springaspectjaop.metier.impl.*.*(..))")
     public void pc1(){
@@ -31,6 +32,7 @@ public class LoggingAspect {
                 "\nwith source location : " + proceedingJoinPoint.getSourceLocation()+
                 "\nwith static part : " + proceedingJoinPoint.getStaticPart()+
                 "\nwith class : " + proceedingJoinPoint.getClass());
+        long t1, t2;
         t1 = System.currentTimeMillis();
         proceedingJoinPoint.proceed();
         t2 = System.currentTimeMillis();
