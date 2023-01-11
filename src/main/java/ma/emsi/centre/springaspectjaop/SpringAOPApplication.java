@@ -26,5 +26,12 @@ public class SpringAOPApplication implements CommandLineRunner {
 	public void run(String... args) throws Exception {
 		System.out.println("Démarrage de l'application");
 		this.metierBanque.addCommpte(new Compte(0l,100));
+		try {
+			this.metierBanque.retirer(0l, 101);
+		}catch (RuntimeException e){
+			System.out.println("Runtime exception : " + e.getMessage());
+		}
+
+
 	}
 }

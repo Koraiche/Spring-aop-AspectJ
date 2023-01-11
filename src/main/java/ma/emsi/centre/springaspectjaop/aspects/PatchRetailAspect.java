@@ -4,6 +4,7 @@ package ma.emsi.centre.springaspectjaop.aspects;
 import ma.emsi.centre.springaspectjaop.domain.Compte;
 import ma.emsi.centre.springaspectjaop.metier.impl.MetierBanqueImpl;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
@@ -23,7 +24,16 @@ public class PatchRetailAspect {
     @Around("pc2()")
     public Object autour(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         MetierBanqueImpl metierBanque = (MetierBanqueImpl)proceedingJoinPoint.getTarget();
-        metierBanque.consulter((Long)proceedingJoinPoint.getArgs()[0]);
-        return proceedingJoinPoint.proceed();
+        Compte compte = metierBanque.consulter((Long)proceedingJoinPoint.getArgs()[0]);
+        if(compte.getSolde()<(double)proceedingJoinPoint.getArgs()[1]){
+            throw new RuntimeException("solde insuffisant");
+        }else{
+            return proceedingJoinPoint.proceed();
+        }
+
+    }
+    @AfterThrowing("pc2()")
+    public void retirer(){
+        System.out.println("an exception has been thrown");
     }
 }

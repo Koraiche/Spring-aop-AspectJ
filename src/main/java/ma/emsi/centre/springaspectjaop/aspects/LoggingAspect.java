@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class LoggingAspect {
 
     Logger log = LoggerFactory.getLogger(LoggingAspect.class);
-    @Pointcut("execution(* ma.emsi.centre.springaspectjaop.metier.impl.*.*(..))")
+    @Pointcut("execution(* ma.emsi.centre.springaspectjaop.metier.impl.MetierBanqueImpl.addCommpte(..))")
     public void pc1(){
 
     }
