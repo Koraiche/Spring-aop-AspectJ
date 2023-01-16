@@ -19,15 +19,10 @@ public class SpringAOPApplication implements CommandLineRunner {
 	public static void main(String[] args) {
 		SpringApplication.run(SpringAOPApplication.class, args);
 	}
-	@Async
-	public static void test() throws InterruptedException {
-		System.out.println("before");
-		Thread.sleep(10000l);
-		System.out.println("sleep");
-	}
+
 	@Override
 	public void run(String... args) throws Exception {
-		SecurityContext.authenticate("root", "root", new String[]{"USER","ADMIN"});
+		SecurityContext.authenticate("root", "root", new String[]{"USER"});
 		this.metier.process();
 		double cpt = this.metier.compute();
 		System.out.println(cpt);

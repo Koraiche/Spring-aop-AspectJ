@@ -38,6 +38,6 @@ public class AuthorizationAspect {
             Object obj = proceedingJoinPoint.proceed();
             return obj;
         }
-        throw new RuntimeException("Unauthorized => 403 !");
+        throw new RuntimeException("Unauthorized => 403 ! : " + proceedingJoinPoint.getSignature());
     }
 }
