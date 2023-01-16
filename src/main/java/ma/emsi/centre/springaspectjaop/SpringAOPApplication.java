@@ -1,36 +1,36 @@
 package ma.emsi.centre.springaspectjaop;
 
-import ma.emsi.centre.springaspectjaop.domain.Compte;
-import ma.emsi.centre.springaspectjaop.metier.IMetierBanque;
+import lombok.extern.slf4j.Slf4j;
+import ma.emsi.centre.springaspectjaop.service.IMetier;
+import ma.emsi.centre.springaspectjaop.service.SecurityContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.scheduling.annotation.Async;
 
 
-@SpringBootApplication
-@EnableAspectJAutoProxy
-@ComponentScan("ma.emsi.centre.springaspectjaop")
+@SpringBootApplication @Slf4j
 public class SpringAOPApplication implements CommandLineRunner {
 
 	@Autowired
-	private IMetierBanque metierBanque;
+	private IMetier metier;
 
 	public static void main(String[] args) {
 		SpringApplication.run(SpringAOPApplication.class, args);
 	}
-
+	@Async
+	public static void test() throws InterruptedException {
+		System.out.println("before");
+		Thread.sleep(10000l);
+		System.out.println("sleep");
+	}
 	@Override
 	public void run(String... args) throws Exception {
-		System.out.println("Démarrage de l'application");
-		this.metierBanque.addCommpte(new Compte(0l,100));
-		try {
-			this.metierBanque.retirer(0l, 101);
-		}catch (RuntimeException e){
-			System.out.println("Runtime exception : " + e.getMessage());
-		}
+		SecurityContext.authenticate("root", "root", new String[]{"USER","ADMIN"});
+		this.metier.process();
+		double cpt = this.metier.compute();
+		System.out.println(cpt);
 
 
 	}
